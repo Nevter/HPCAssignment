@@ -9,6 +9,13 @@
 #include <string> 
 #include <fstream>
 
+#include <cstdlib>
+
+#include "lib/array_tools.hpp"
+#include "lib/dcd_r.hpp"
+#include "lib/dcd_r.cpp"
+#include "lib/dcd.cpp"
+
 
 // Forward declerations
 void initInputFileParameters(std::string inputFileName);
@@ -51,8 +58,33 @@ int main(int argc, char *argv[])  {
     initInputFileParameters(inputFileName);
 
     // Open the input DCD file
+    //TODO: Fix this.
+    //std::string fp = "/home/luke/Honours/HPC/assignment/data/"+ifParams.dcdInputFile;
+    std::string fp = "/home/luke/Honours/HPC/assignment/data/example_pn3_10RU_751frames.dcd";
+    const char* dcdFileName = fp.c_str();
+
+    // instance of a new object DCD_R attached to a dcd file 
+    DCD_R dcdf(dcdFileName);
     
+    // read the header and print it
+    dcdf.read_header();
+    //dcdf.printHeader();
     
+    const float *x,*y,*z;
+    
+    //read and print out the atom 1 from the first 5 frames
+    for(int i=0;i<5;i++)
+    {
+        dcdf.read_oneFrame();
+        
+        x=dcdf.getX();
+        y=dcdf.getY();
+        z=dcdf.getZ();
+	    std::cout << "(" << x[0] << "," << y[0] << "," << z[0] << ")" << std::endl;
+
+    }
+    
+    //return a success
     return 0;
 }
 
