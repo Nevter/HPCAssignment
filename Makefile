@@ -5,7 +5,7 @@ all: atomic_serial atomic_MPI atomic_openMP
 
 #Serial Implementation
 atomic_serial: atomic_serial.cpp
-	$(CC) -g atomic_serial.cpp -o bin/atomic_serial.o  $(flags)
+	$(CC) -g -I /lib/gromacsplugin atomic_serial.cpp -o bin/atomic_serial.o  $(flags)
 
 #OpenMP Implementation
 atomic_openMP: atomic_openMP.cpp

@@ -9,11 +9,12 @@
 #include <string> 
 #include <fstream>
 
+
 // Forward declerations
 void initInputFileParameters(std::string inputFileName);
 std::vector<int> getParticleSet(std::string strParticleLine);
 
-//Structs
+// Structs
 struct inputFileParameters {
     std::string dcdInputFile;
     std::string kCutOff;
@@ -42,19 +43,25 @@ int main(int argc, char *argv[])  {
         std::cout << "[-o <outputFileName>]" << std::endl;
         exit(1);
     }
-    std::cout << "Input file: " << inputFileName << std::endl;
+    std::cout << " ~~~ Atomic Serial ~~~ " << std::endl;
+    std::cout << "Config Input file: " << inputFileName << std::endl;
     std::cout << "Output file: " << outputFilename << std::endl;
 
     // Read the input file parameters
     initInputFileParameters(inputFileName);
 
+    // Open the input DCD file
     
     
     return 0;
 }
 
+/**
+ * Read input file parameters from an input file as specified 
+ * in the assignment.
+ */
 void initInputFileParameters(std::string inputFileName){
-    //Read the input file into an array of each line;
+    // Read the input file into an array of each line;
     std::string inputFileLines[4];
     std::string line;
     std::ifstream inputFile (inputFileName);
@@ -67,51 +74,57 @@ void initInputFileParameters(std::string inputFileName){
         inputFile.close();
     }
     else {
-        std::cout << "Unable to open file" << std::endl; 
+        std::cout << "Unable to open file:" << inputFileName << std::endl;
+        exit(1); 
     }
 
-    //Set the inputDCD and k value in the input file parameters
+    // Set the inputDCD and k value in the input file parameters
     ifParams.dcdInputFile = inputFileLines[0];
     ifParams.kCutOff = inputFileLines[1];
 
-    //Set the particle sets
+    // Set the particle sets
     ifParams.particleSetA = getParticleSet(inputFileLines[2]);
     ifParams.particleSetB = getParticleSet(inputFileLines[3]);
-
 }
 
+/**
+ * Get a list of the particles in a particle set. 
+ * The input is a string containing atom indices 
+ * comprising particle set A (a range or itemized 
+ * list of comma separated values or mix of two).
+ */
 std::vector<int> getParticleSet(std::string strParticleLine){
-    std::vector<std::string> strParticleSetA;
+    std::vector<std::string> strParticleSet;
+    std::vector<int> particleSet;
     
+    // Split the strParticle Line by commas, separating individual values and value ranges
     std::string s = strParticleLine;
     std::string delimiter = ",";
     size_t pos = 0;
     std::string token;
     while ((pos = s.find(delimiter)) != std::string::npos) {
         token = s.substr(0, pos);
-        strParticleSetA.push_back(token);
+        strParticleSet.push_back(token);
         s.erase(0, pos + delimiter.length());
     }
-    strParticleSetA.push_back(s);
+    strParticleSet.push_back(s);
     
-    std::vector<int> particleSetA;
-
+    // Get each particle, including unfolding ranges
     delimiter = "-";
-    for(std::string entry : strParticleSetA) {
-        //a range
+    for(std::string entry : strParticleSet) {
+        // range
         if (entry.find(delimiter) != std::string::npos){
             pos = entry.find(delimiter);
             std::string first = entry.substr(0,pos);
             std::string last = entry.substr(pos+1,entry.size());
             for (int i = std::stoi(first); i <= std::stoi(last); i++){
-                particleSetA.push_back(i);
+                particleSet.push_back(i);
             }
         }
-        //a single value
+        // single value
         else {
-            particleSetA.push_back(std::stoi(entry));
+            particleSet.push_back(std::stoi(entry));
         }
     }
-    return particleSetA;
-
+    return particleSet;
 }
