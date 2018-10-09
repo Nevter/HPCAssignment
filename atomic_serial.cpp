@@ -8,6 +8,9 @@
 #include <vector>
 #include <string> 
 #include <fstream>
+#include <algorithm>
+#include <math.h>       /* sqrt */
+#include <set> 
 
 #include <cstdlib>
 
@@ -20,15 +23,77 @@
 // Forward declerations
 void initInputFileParameters(std::string inputFileName);
 std::vector<int> getParticleSet(std::string strParticleLine);
+double calculate3DDistance(float x0, float y0, float z0, float x1, float y1, float z1);
 
 // Structs
 struct inputFileParameters {
     std::string dcdInputFile;
-    std::string kCutOff;
+    int kCutOff;
     std::vector<int> particleSetA;
     std::vector<int> particleSetB;
 } ifParams;
 
+struct atomPair {
+    int timeStep;
+    int atomAIndex;
+    int atomBIndex;
+    double distance;
+
+    std::string toString(){
+        std::string asString = "";
+        asString += std::to_string(timeStep) + ",";
+        asString += std::to_string(atomAIndex) + ",";
+        asString += std::to_string(atomBIndex) + ",";
+        asString += std::to_string(distance);
+        return asString;
+    }
+};
+
+struct atomPairCmp {
+    bool operator()(const atomPair& lhs, const atomPair& rhs) const { 
+        return lhs.distance < rhs.distance; 
+    }
+};
+
+struct maxHeap {
+    int size;
+    std::set<atomPair,atomPairCmp> heap;
+
+    void insert(atomPair ap){
+        heap.insert(ap);
+        if (heap.size() > size){
+            //remove the biggest element
+            heap.erase(--heap.end());
+        }
+    }
+
+    void printHeap(){
+        std::set<atomPair,atomPairCmp>::iterator itr;
+        for (itr = heap.begin(); itr != heap.end(); ++itr) 
+        { 
+            atomPair atomP = *itr;
+            std::cout << atomP.toString() << std::endl;
+        }  
+    }
+
+    std::vector<atomPair> getHeapAsVector(){
+        std::vector<atomPair> result;
+        std::set<atomPair,atomPairCmp>::iterator itr;
+        for (itr = heap.begin(); itr != heap.end(); ++itr) 
+        { 
+            atomPair atomP = *itr;
+            result.push_back(atomP);
+        }  
+        return result;
+    }
+
+};
+
+/**
+ * 
+ * 
+ * 
+ */
 int main(int argc, char *argv[])  {
     
     // Get the input and output file names
@@ -66,28 +131,78 @@ int main(int argc, char *argv[])  {
     // instance of a new object DCD_R attached to a dcd file 
     DCD_R dcdf(dcdFileName);
     
-    // read the header and print it
+    // read the header
     dcdf.read_header();
-    //dcdf.printHeader();
     
+    //floats to hold the x,y,z coords of each atom in each frame. 
     const float *x,*y,*z;
     
     //read and print out the atom 1 from the first 5 frames
-    for(int i=0;i<5;i++)
-    {
+    int numFrames = dcdf.getNFILE();
+    int numAtoms = dcdf.getNATOM();
+    std::cout << "Number of frames: " << numFrames << std::endl;
+    std::cout << "Number of atoms: " << numAtoms << std::endl;
+
+    //DEBUG: change number of frames so not looking at all frames
+    numFrames = 10;
+
+    std::vector<atomPair> outputV;
+
+    for(int frame=0; frame<numFrames; frame++){
+        // Read the next frame
         dcdf.read_oneFrame();
-        
+
+        // Get the atom positions
         x=dcdf.getX();
         y=dcdf.getY();
         z=dcdf.getZ();
-	    std::cout << "(" << x[0] << "," << y[0] << "," << z[0] << ")" << std::endl;
 
+        // Holds the smallest k atomPairs    
+        maxHeap smallestSet;
+        smallestSet.size = ifParams.kCutOff;
+
+        // For each atom in set A 
+        for (int a : ifParams.particleSetA){
+            
+            // Get each atom in set B
+            for (int b : ifParams.particleSetB){
+                
+                // Ensure that we aren't looking at the same particle 
+                if (a==b) continue;
+                
+                // Get the distance between the two atoms
+                double distance = calculate3DDistance(x[a],y[a],z[a],x[b],y[b],z[b]);
+                
+
+                atomPair ap;
+                ap.timeStep = frame;
+                ap.atomAIndex = a;
+                ap.atomBIndex = b;
+                ap.distance = distance;
+
+                //If the distance is smaller than any in the smallest set, save it
+                smallestSet.insert(ap);
+            }
+        }
+
+        // Put the smallest k atom pairs in a master vector
+        std::vector<atomPair> smallestK = smallestSet.getHeapAsVector();
+        outputV.insert(outputV.end(), smallestK.begin(), smallestK.end());
+    }   
+
+    //print the output vector
+    for (atomPair ap : outputV){
+        std::cout << ap.toString() << std::endl;
     }
     
     //return a success
     return 0;
 }
 
+double calculate3DDistance(float xa, float ya, float za, float xb, float yb, float zb){
+
+    return std::sqrt(std::pow(xb-xa,2.0) + std::pow(yb-ya,2.0) + std::pow(zb-za,2.0));
+}
 /**
  * Read input file parameters from an input file as specified 
  * in the assignment.
@@ -112,7 +227,7 @@ void initInputFileParameters(std::string inputFileName){
 
     // Set the inputDCD and k value in the input file parameters
     ifParams.dcdInputFile = inputFileLines[0];
-    ifParams.kCutOff = inputFileLines[1];
+    ifParams.kCutOff = stoi(inputFileLines[1]);
 
     // Set the particle sets
     ifParams.particleSetA = getParticleSet(inputFileLines[2]);
