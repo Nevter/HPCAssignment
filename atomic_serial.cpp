@@ -51,37 +51,6 @@ struct atomPair {
     }
 };
 
-struct atomPairCmp {
-    bool operator()(const atomPair& lhs, const atomPair& rhs) const { 
-        return lhs.distance < rhs.distance; 
-    }
-};
-
-struct maxHeap {
-    int size;
-    std::set<atomPair,atomPairCmp> heap;
-
-    void insert(atomPair ap){
-        heap.insert(ap);
-        if (heap.size() > size){
-            //remove the biggest element
-            heap.erase(--heap.end());
-        }
-    }
-
-    std::vector<atomPair> getHeapAsVector(){
-        std::vector<atomPair> result;
-        std::set<atomPair,atomPairCmp>::iterator itr;
-        for (itr = heap.begin(); itr != heap.end(); ++itr) 
-        { 
-            atomPair atomP = *itr;
-            result.push_back(atomP);
-        }  
-        return result;
-    }
-
-};
-
 /**
  * 
  * 
@@ -174,7 +143,7 @@ int main(int argc, char *argv[])  {
                 ap.distance = distance;
 
                 //If the distance is smaller than any in the smallest set, save it            
-                if (smallestSet.size() < 3) {
+                if (smallestSet.size() < ifParams.kCutOff) {
                     smallestSet.push(ap);
                 }
                 else {
@@ -188,9 +157,12 @@ int main(int argc, char *argv[])  {
         }
     
         // Put the smallest k atom pairs in a master vector
-        outputV.push_back(smallestSet.top()); smallestSet.pop();
-        outputV.push_back(smallestSet.top()); smallestSet.pop();
-        outputV.push_back(smallestSet.top()); smallestSet.pop();
+        std::vector<atomPair> smallestK;
+        for (int i =0; i < ifParams.kCutOff; i++){
+            smallestK.push_back(smallestSet.top()); smallestSet.pop();
+        }
+        std::reverse(smallestK.begin(),smallestK.end());
+        outputV.insert(outputV.end(), smallestK.begin(), smallestK.end());
     }   
 
     //print the output vector
