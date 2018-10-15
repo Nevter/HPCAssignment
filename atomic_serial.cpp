@@ -67,15 +67,6 @@ struct maxHeap {
         }
     }
 
-    void printHeap(){
-        std::set<atomPair,atomPairCmp>::iterator itr;
-        for (itr = heap.begin(); itr != heap.end(); ++itr) 
-        { 
-            atomPair atomP = *itr;
-            std::cout << atomP.toString() << std::endl;
-        }  
-    }
-
     std::vector<atomPair> getHeapAsVector(){
         std::vector<atomPair> result;
         std::set<atomPair,atomPairCmp>::iterator itr;
@@ -144,7 +135,7 @@ int main(int argc, char *argv[])  {
     std::cout << "Number of atoms: " << numAtoms << std::endl;
 
     //DEBUG: change number of frames so not looking at all frames
-    numFrames = 10;
+    //numFrames = 10;
 
     std::vector<atomPair> outputV;
 
@@ -167,7 +158,7 @@ int main(int argc, char *argv[])  {
             // Get each atom in set B
             for (int b : ifParams.particleSetB){
                 
-                // Ensure that we aren't looking at the same particle 
+                // Ensure that we aren't looking at the same atom 
                 if (a==b) continue;
                 
                 // Get the distance between the two atoms
@@ -191,9 +182,9 @@ int main(int argc, char *argv[])  {
     }   
 
     //print the output vector
-    for (atomPair ap : outputV){
-        std::cout << ap.toString() << std::endl;
-    }
+    //for (atomPair ap : outputV){
+    //    std::cout << ap.toString() << std::endl;
+    //}
     
     //return a success
     return 0;
