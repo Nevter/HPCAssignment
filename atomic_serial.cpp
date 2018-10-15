@@ -8,11 +8,9 @@
 #include <vector>
 #include <string> 
 #include <fstream>
-#include <algorithm>
 #include <math.h>       /* sqrt */
-#include <set> 
 #include <queue>
-#include <functional>
+
 
 #include <cstdlib>
 
@@ -25,7 +23,6 @@
 // Forward declerations
 void initInputFileParameters(std::string inputFileName);
 std::vector<int> getParticleSet(std::string strParticleLine);
-double calculate3DDistance(float x0, float y0, float z0, float x1, float y1, float z1);
 
 // Structs
 struct inputFileParameters {
@@ -106,7 +103,7 @@ int main(int argc, char *argv[])  {
     std::cout << "Number of atoms: " << numAtoms << std::endl;
 
     //DEBUG: change number of frames so not looking at all frames
-    numFrames = 1;
+    //numFrames = 1;
 
     std::string output = "";
 
@@ -149,7 +146,6 @@ int main(int argc, char *argv[])  {
                         smallestSet.push(ap);
                     }
                 }  
-                
             }
         }
         
