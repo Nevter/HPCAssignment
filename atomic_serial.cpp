@@ -106,9 +106,9 @@ int main(int argc, char *argv[])  {
     std::cout << "Number of atoms: " << numAtoms << std::endl;
 
     //DEBUG: change number of frames so not looking at all frames
-    //numFrames = 1;
+    numFrames = 1;
 
-    std::vector<atomPair> outputV;
+    std::string output = "";
 
     for(int frame=0; frame<numFrames; frame++){
         // Read the next frame
@@ -129,57 +129,48 @@ int main(int argc, char *argv[])  {
             // Get each atom in set B
             for (int b : ifParams.particleSetB){
                 
-                // Ensure that we aren't looking at the same atom 
-                if (a==b) continue;
-                
                 // Get the distance between the two atoms
-                double distance = calculate3DDistance(x[a],y[a],z[a],x[b],y[b],z[b]);
                 
-
+                double distance = std::sqrt(std::pow(x[b]-x[a],2.0) + std::pow(y[b]-y[a],2.0) + std::pow(z[b]-z[a],2.0));   
+                
                 atomPair ap;
                 ap.timeStep = frame;
                 ap.atomAIndex = a;
                 ap.atomBIndex = b;
                 ap.distance = distance;
 
-                //If the distance is smaller than any in the smallest set, save it            
+                //If the distance is smaller than any in the smallest set, save it        
                 if (smallestSet.size() < ifParams.kCutOff) {
                     smallestSet.push(ap);
                 }
                 else {
-                    if (smallestSet.top().distance > ap.distance){
+                    if (smallestSet.top().distance > distance){
                         smallestSet.pop();
                         smallestSet.push(ap);
                     }
-                }
+                }  
                 
             }
         }
-    
-        // Put the smallest k atom pairs in a master vector
-        std::vector<atomPair> smallestK;
-        for (int i =0; i < ifParams.kCutOff; i++){
-            smallestK.push_back(smallestSet.top()); smallestSet.pop();
+        
+        std::string frameOutput = "";
+        // Put the smallest k atom pairs in an output String
+        while (!smallestSet.empty()){
+            atomPair ap = smallestSet.top();
+            frameOutput = ap.toString() + "\n" + frameOutput;
+            smallestSet.pop();
         }
-        std::reverse(smallestK.begin(),smallestK.end());
-        outputV.insert(outputV.end(), smallestK.begin(), smallestK.end());
+        output += frameOutput;
+        
     }   
 
-    //print the output vector 
-    /*
-    for (atomPair ap : outputV){
-        std::cout << ap.toString() << std::endl;
-    }
-    */
+    //print the output string stream  
+    std::cout << output << std::endl;
     
     //return a success
     return 0;
 }
 
-double calculate3DDistance(float xa, float ya, float za, float xb, float yb, float zb){
-
-    return std::sqrt(std::pow(xb-xa,2.0) + std::pow(yb-ya,2.0) + std::pow(zb-za,2.0));
-}
 /**
  * Read input file parameters from an input file as specified 
  * in the assignment.
