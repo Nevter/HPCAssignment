@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <math.h>       /* sqrt */
 #include <set> 
+#include <queue>
+#include <functional>
 
 #include <cstdlib>
 
@@ -135,7 +137,7 @@ int main(int argc, char *argv[])  {
     std::cout << "Number of atoms: " << numAtoms << std::endl;
 
     //DEBUG: change number of frames so not looking at all frames
-    //numFrames = 10;
+    numFrames = 1;
 
     std::vector<atomPair> outputV;
 
@@ -149,8 +151,8 @@ int main(int argc, char *argv[])  {
         z=dcdf.getZ();
 
         // Holds the smallest k atomPairs    
-        maxHeap smallestSet;
-        smallestSet.size = ifParams.kCutOff;
+        auto cmp = []( atomPair& lhs, atomPair& rhs) { return lhs.distance < rhs.distance; };   
+        std::priority_queue<atomPair, std::vector<atomPair>, decltype(cmp)> smallestSet(cmp);
 
         // For each atom in set A 
         for (int a : ifParams.particleSetA){
@@ -171,20 +173,30 @@ int main(int argc, char *argv[])  {
                 ap.atomBIndex = b;
                 ap.distance = distance;
 
-                //If the distance is smaller than any in the smallest set, save it
-                smallestSet.insert(ap);
+                //If the distance is smaller than any in the smallest set, save it            
+                if (smallestSet.size() < 3) {
+                    smallestSet.push(ap);
+                }
+                else {
+                    if (smallestSet.top().distance > ap.distance){
+                        smallestSet.pop();
+                        smallestSet.push(ap);
+                    }
+                }
+                
             }
         }
-
+    
         // Put the smallest k atom pairs in a master vector
-        std::vector<atomPair> smallestK = smallestSet.getHeapAsVector();
-        outputV.insert(outputV.end(), smallestK.begin(), smallestK.end());
+        outputV.push_back(smallestSet.top()); smallestSet.pop();
+        outputV.push_back(smallestSet.top()); smallestSet.pop();
+        outputV.push_back(smallestSet.top()); smallestSet.pop();
     }   
 
     //print the output vector
-    //for (atomPair ap : outputV){
-    //    std::cout << ap.toString() << std::endl;
-    //}
+    for (atomPair ap : outputV){
+        std::cout << ap.toString() << std::endl;
+    }
     
     //return a success
     return 0;
