@@ -106,7 +106,7 @@ int main(int argc, char *argv[])  {
     std::cout << "Number of atoms: " << numAtoms << std::endl;
 
     //DEBUG: change number of frames so not looking at all frames
-    numFrames = 1;
+    //numFrames = 1;
 
     std::vector<atomPair> outputV;
 
@@ -165,10 +165,12 @@ int main(int argc, char *argv[])  {
         outputV.insert(outputV.end(), smallestK.begin(), smallestK.end());
     }   
 
-    //print the output vector
+    //print the output vector 
+    /*
     for (atomPair ap : outputV){
         std::cout << ap.toString() << std::endl;
     }
+    */
     
     //return a success
     return 0;
