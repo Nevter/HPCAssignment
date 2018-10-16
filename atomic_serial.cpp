@@ -11,13 +11,9 @@
 #include <math.h>       /* sqrt */
 #include <queue>
 
-
 #include <cstdlib>
 
-#include "lib/array_tools.hpp"
-#include "lib/dcd_r.hpp"
-#include "lib/dcd_r.cpp"
-#include "lib/dcd.cpp"
+#include "lib/dcdplugin.c"
 
 
 // Forward declerations
@@ -87,18 +83,19 @@ int main(int argc, char *argv[])  {
     std::string fp = "/home/luke/Honours/HPC/assignment/data/example_pn3_10RU_751frames.dcd";
     const char* dcdFileName = fp.c_str();
 
-    // instance of a new object DCD_R attached to a dcd file 
-    DCD_R dcdf(dcdFileName);
+    // instance of a new DCD reading object
+    int numAtoms = 0;
     
     // read the header
-    dcdf.read_header();
+    void *raw_data = open_dcd_read(dcdFileName, "dcd", &numAtoms);
+    dcdhandle *dcd = (dcdhandle *) raw_data;
     
-    //floats to hold the x,y,z coords of each atom in each frame. 
-    const float *x,*y,*z;
+    //hold info of each frame. 
+    molfile_timestep_t timestep;
+    timestep.coords = (float *) malloc(3 * sizeof(float) * numAtoms);
     
     //read and print out the atom 1 from the first 5 frames
-    int numFrames = dcdf.getNFILE();
-    int numAtoms = dcdf.getNATOM();
+    int numFrames = dcd->nsets;
     std::cout << "Number of frames: " << numFrames << std::endl;
     std::cout << "Number of atoms: " << numAtoms << std::endl;
 
@@ -109,12 +106,7 @@ int main(int argc, char *argv[])  {
 
     for(int frame=0; frame<numFrames; frame++){
         // Read the next frame
-        dcdf.read_oneFrame();
-
-        // Get the atom positions
-        x=dcdf.getX();
-        y=dcdf.getY();
-        z=dcdf.getZ();
+        int rc = read_next_timestep(raw_data, numAtoms, &timestep);
 
         // Holds the smallest k atomPairs    
         auto cmp = []( atomPair& lhs, atomPair& rhs) { return lhs.distance < rhs.distance; };   
@@ -126,9 +118,12 @@ int main(int argc, char *argv[])  {
             // Get each atom in set B
             for (int b : ifParams.particleSetB){
                 
+                //get the atoms
+                float *atomA = timestep.coords + 3 * a;
+                float *atomB = timestep.coords + 3 * b;
+
                 // Get the distance between the two atoms
-                
-                double distance = std::sqrt(std::pow(x[b]-x[a],2.0) + std::pow(y[b]-y[a],2.0) + std::pow(z[b]-z[a],2.0));   
+                double distance = std::sqrt(std::pow(atomB[0]-atomA[0],2.0) + std::pow(atomB[1]-atomA[1],2.0) + std::pow(atomB[2]-atomA[2],2.0));   
                 
                 atomPair ap;
                 ap.timeStep = frame;
@@ -160,8 +155,12 @@ int main(int argc, char *argv[])  {
         
     }   
 
+    //close the dcd reader
+    free(timestep.coords);    
+    close_file_read(raw_data);
+
     //print the output string stream  
-    std::cout << output << std::endl;
+    //std::cout << output << std::endl;
     
     //return a success
     return 0;

@@ -1,6 +1,7 @@
 /**
- * OpenMP Implementation of the atomic modeling thing
+ * Serial Implementation of the atomic modeling thing
  */
+
 // Includes
 #include <omp.h>  //include OMP library
 #include <stdio.h>
@@ -11,13 +12,10 @@
 #include <math.h>       /* sqrt */
 #include <queue>
 
-
 #include <cstdlib>
 
-#include "lib/array_tools.hpp"
-#include "lib/dcd_r.hpp"
-#include "lib/dcd_r.cpp"
-#include "lib/dcd.cpp"
+#include "lib/dcdplugin.c"
+
 
 // Forward declerations
 void initInputFileParameters(std::string inputFileName);
@@ -80,87 +78,115 @@ int main(int argc, char *argv[])  {
     // Read the input file parameters
     initInputFileParameters(inputFileName);
 
-    // Open the input DCD file
+    // Get the input file name
     //TODO: Fix this.
     //std::string fp = "/home/luke/Honours/HPC/assignment/data/"+ifParams.dcdInputFile;
     std::string fp = "/home/luke/Honours/HPC/assignment/data/example_pn3_10RU_751frames.dcd";
     const char* dcdFileName = fp.c_str();
 
-    // instance of a new object DCD_R attached to a dcd file 
-    DCD_R dcdf(dcdFileName);
-    
-    // read the header
-    dcdf.read_header();
-    
-    //floats to hold the x,y,z coords of each atom in each frame. 
-    const float *x,*y,*z;
-    
-    //read and print out the atom 1 from the first 5 frames
-    int numFrames = dcdf.getNFILE();
-    int numAtoms = dcdf.getNATOM();
-    std::cout << "Number of frames: " << numFrames << std::endl;
-    std::cout << "Number of atoms: " << numAtoms << std::endl;
-
-    //DEBUG: change number of frames so not looking at all frames
-    //numFrames = 1;
-
     std::string output = "";
 
-	#pragma omp parallel reduction(+:output) 
-	{
-    for(int frame=0; frame<numFrames; frame++){
-        // Read the next frame
-        dcdf.read_oneFrame();
+    int numAtoms = 0;
+    
+    #pragma omp declare reduction(+ : std::string : \
+                              omp_out = omp_out+omp_in) \
+                              initializer(omp_priv = std::string(""))
 
-        // Get the atom positions
-        x=dcdf.getX();
-        y=dcdf.getY();
-        z=dcdf.getZ();
+    #pragma omp parallel private(numAtoms) reduction(+:output)
+    
+    {
+        // Each process gets its own dcd reader
+        // instance of a new DCD reading object
+        void *raw_data = open_dcd_read(dcdFileName, "dcd", &numAtoms);
+        dcdhandle *dcd = (dcdhandle *) raw_data;
+        
+        //hold info of each frame. 
+        molfile_timestep_t timestep;
+        timestep.coords = (float *) malloc(3 * sizeof(float) * numAtoms);
+        
+        //read and print out the atom 1 from the first 5 frames
+        int numFrames = dcd->nsets;
 
-        // Holds the smallest k atomPairs    
-        auto cmp = []( atomPair& lhs, atomPair& rhs) { return lhs.distance < rhs.distance; };   
-        std::priority_queue<atomPair, std::vector<atomPair>, decltype(cmp)> smallestSet(cmp);
+        //work out which frame this process needs to process
+        int numThreads = omp_get_num_threads();
+        int threadNum = omp_get_thread_num();
 
-        // For each atom in set A 
-        for (int a : ifParams.particleSetA){
-            
-            // Get each atom in set B
-            for (int b : ifParams.particleSetB){
+        int numFramesPerThread = numFrames/numThreads;
+
+        int startingFrame = threadNum * numFramesPerThread;
+        int endingFrame = startingFrame + numFramesPerThread;
+
+        if (threadNum==numThreads-1) endingFrame = numFrames;
+
+        //accelerate the read_next_timestep to the right frame
+        for(int i=0; i<startingFrame;i++){
+            // Read the next frame
+            int rc = read_next_timestep(raw_data, numAtoms, &timestep);
+        }
+        std::string info = "Thread:"+std::to_string(threadNum)+", startingFrame:"+std::to_string(startingFrame)+", endingFrame:"+std::to_string(endingFrame)+"\n";
+        std::cout << info;
+        #pragma omp barrier 
+
+        for(int frame=startingFrame; frame<endingFrame; frame++){
+        
+            // Read the next frame
+            int rc = read_next_timestep(raw_data, numAtoms, &timestep);
+
+            // Holds the smallest k atomPairs    
+            auto cmp = []( atomPair& lhs, atomPair& rhs) { return lhs.distance < rhs.distance; };   
+            std::priority_queue<atomPair, std::vector<atomPair>, decltype(cmp)> smallestSet(cmp);
+
+            // For each atom in set A 
+            for (int a : ifParams.particleSetA){
                 
-                // Get the distance between the two atoms
-                
-                double distance = std::sqrt(std::pow(x[b]-x[a],2.0) + std::pow(y[b]-y[a],2.0) + std::pow(z[b]-z[a],2.0));   
-                
-                atomPair ap;
-                ap.timeStep = frame;
-                ap.atomAIndex = a;
-                ap.atomBIndex = b;
-                ap.distance = distance;
+                // Get each atom in set B
+                for (int b : ifParams.particleSetB){
+                    
+                    //get the atoms
+                    float *atomA = timestep.coords + 3 * a;
+                    float *atomB = timestep.coords + 3 * b;
 
-                //If the distance is smaller than any in the smallest set, save it        
-                if (smallestSet.size() < ifParams.kCutOff) {
-                    smallestSet.push(ap);
-                }
-                else {
-                    if (smallestSet.top().distance > distance){
-                        smallestSet.pop();
+                    // Get the distance between the two atoms
+                    double distance = std::sqrt(std::pow(atomB[0]-atomA[0],2.0) + std::pow(atomB[1]-atomA[1],2.0) + std::pow(atomB[2]-atomA[2],2.0));   
+                    
+                    atomPair ap;
+                    ap.timeStep = frame;
+                    ap.atomAIndex = a;
+                    ap.atomBIndex = b;
+                    ap.distance = distance;
+
+                    //If the distance is smaller than any in the smallest set, save it        
+                    if (smallestSet.size() < ifParams.kCutOff) {
                         smallestSet.push(ap);
                     }
-                }  
+                    else {
+                        if (smallestSet.top().distance > distance){
+                            smallestSet.pop();
+                            smallestSet.push(ap);
+                        }
+                    }  
+                }
             }
-        }
-        
-        std::string frameOutput = "";
-        // Put the smallest k atom pairs in an output String
-        while (!smallestSet.empty()){
-            atomPair ap = smallestSet.top();
-            frameOutput = ap.toString() + "\n" + frameOutput;
-            smallestSet.pop();
-        }
-        output += frameOutput;
-        
-    }   
-	}
+            
+            std::string frameOutput = "";
+            // Put the smallest k atom pairs in an output String
+            while (!smallestSet.empty()){
+                atomPair ap = smallestSet.top();
+                frameOutput = ap.toString() + "\n" + frameOutput;
+                smallestSet.pop();
+            }
+            #pragma omp critical
+            output += frameOutput;
+        }   
+
+        //close the dcd reader
+        free(timestep.coords);    
+        close_file_read(raw_data);
+
+    }
+    
+
+
     //print the output string stream  
     std::cout << output << std::endl;
     

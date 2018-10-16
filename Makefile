@@ -4,7 +4,7 @@ flags=-std=c++11
 all: atomic_serial atomic_MPI atomic_openMP
 
 #Serial Implementation
-atomic_serial: atomic_serial.cpp
+atomic_serial: atomic_serial.cpp lib/dcdplugin.c
 	$(CC) -g atomic_serial.cpp -o bin/atomic_serial.o  $(flags) -O2
 
 #OpenMP Implementation
