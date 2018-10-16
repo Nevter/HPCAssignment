@@ -20,6 +20,7 @@
 // Forward declerations
 void initInputFileParameters(std::string inputFileName);
 std::vector<int> getParticleSet(std::string strParticleLine);
+void printToFile(std::string content, std::string outputFile);
 
 // Structs
 struct inputFileParameters {
@@ -84,15 +85,10 @@ int main(int argc, char *argv[])  {
     std::string fp = "/home/luke/Honours/HPC/assignment/data/example_pn3_10RU_751frames.dcd";
     const char* dcdFileName = fp.c_str();
 
-    std::string output = "";
-
+    std::vector<std::string> outputVector(omp_get_max_threads());
     int numAtoms = 0;
     
-    #pragma omp declare reduction(+ : std::string : \
-                              omp_out = omp_out+omp_in) \
-                              initializer(omp_priv = std::string(""))
-
-    #pragma omp parallel private(numAtoms) reduction(+:output)
+    #pragma omp parallel private(numAtoms) 
     
     {
         // Each process gets its own dcd reader
@@ -123,10 +119,7 @@ int main(int argc, char *argv[])  {
             // Read the next frame
             int rc = read_next_timestep(raw_data, numAtoms, &timestep);
         }
-        std::string info = "Thread:"+std::to_string(threadNum)+", startingFrame:"+std::to_string(startingFrame)+", endingFrame:"+std::to_string(endingFrame)+"\n";
-        std::cout << info;
-        #pragma omp barrier 
-
+        
         for(int frame=startingFrame; frame<endingFrame; frame++){
         
             // Read the next frame
@@ -175,8 +168,8 @@ int main(int argc, char *argv[])  {
                 frameOutput = ap.toString() + "\n" + frameOutput;
                 smallestSet.pop();
             }
-            #pragma omp critical
-            output += frameOutput;
+            
+            outputVector[threadNum] += frameOutput;
         }   
 
         //close the dcd reader
@@ -185,13 +178,23 @@ int main(int argc, char *argv[])  {
 
     }
     
+    //write the output to a file  
+    std::string output = "";
+    for (int i=0; i<outputVector.size(); i++){
+        output += outputVector[i];
+    }
 
+    printToFile(output, outputFilename);
 
-    //print the output string stream  
-    std::cout << output << std::endl;
-    
     //return a success
     return 0;
+}
+
+void printToFile(std::string content, std::string outputFile){
+    std::ofstream outFile;
+    outFile.open (outputFile);
+    outFile << content;
+    outFile.close();
 }
 
 /**

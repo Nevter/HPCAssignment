@@ -19,6 +19,7 @@
 // Forward declerations
 void initInputFileParameters(std::string inputFileName);
 std::vector<int> getParticleSet(std::string strParticleLine);
+void printToFile(std::string content, std::string outputFile);
 
 // Structs
 struct inputFileParameters {
@@ -159,12 +160,21 @@ int main(int argc, char *argv[])  {
     free(timestep.coords);    
     close_file_read(raw_data);
 
-    //print the output string stream  
-    //std::cout << output << std::endl;
+    //write the output to a file  
+    printToFile(output, outputFilename);
     
     //return a success
     return 0;
 }
+
+
+void printToFile(std::string content, std::string outputFile){
+    std::ofstream outFile;
+    outFile.open (outputFile);
+    outFile << content;
+    outFile.close();
+}
+
 
 /**
  * Read input file parameters from an input file as specified 
