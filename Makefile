@@ -12,8 +12,8 @@ atomic_openMP: atomic_openMP.cpp
 	$(CC) -fopenmp atomic_openMP.cpp -o bin/atomic_openMP.o $(flags) -O2
 
 #MPI Implementation
-atomic_MPI: atomic_MPI.c
-	mpicc atomic_MPI.c -o bin/atomic_MPI.o -lm
+atomic_MPI: atomic_MPI.cpp
+	mpic++ atomic_MPI.cpp -o bin/atomic_MPI.o -lm -O2
 
 .cpp.o:
 	$(CC) -c $< $(flags)
