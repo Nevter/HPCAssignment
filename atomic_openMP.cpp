@@ -100,7 +100,7 @@ int main(int argc, char *argv[])  {
         molfile_timestep_t timestep;
         timestep.coords = (float *) malloc(3 * sizeof(float) * numAtoms);
         
-        //read and print out the atom 1 from the first 5 frames
+        //read the number of frames
         int numFrames = dcd->nsets;
 
         //work out which frame this process needs to process
