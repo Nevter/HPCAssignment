@@ -10,7 +10,7 @@
 #include <fstream>
 #include <math.h>       /* sqrt */
 #include <queue>
-
+#include <sys/time.h>
 #include <cstdlib>
 
 #include "lib/dcdplugin.c"
@@ -54,7 +54,7 @@ int main(int argc, char *argv[])  {
     
     // Get the input and output file names
     std::string inputFileName = "";
-    std::string outputFilename = "output.csv";
+    std::string outputFilename = "output";
     if (argc >= 3){
         for (int i = 0; i < argc; i++){
             if (std::string(argv[i]) == "-i"){
@@ -78,6 +78,9 @@ int main(int argc, char *argv[])  {
     // Read the input file parameters
     initInputFileParameters(inputFileName);
 
+    //start a timer
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
 
     // Open the input DCD file
     std::string fp = ifParams.dcdInputFile;
@@ -153,6 +156,10 @@ int main(int argc, char *argv[])  {
         
     }   
 
+    //end timer
+    gettimeofday(&end, NULL);
+    float delta = ((end.tv_sec  - start.tv_sec) * 1000000u + end.tv_usec - start.tv_usec) / 1.e6;
+
     //close the dcd reader
     free(timestep.coords);    
     close_file_read(raw_data);
@@ -160,12 +167,17 @@ int main(int argc, char *argv[])  {
     //write the output to a file  
     printToFile(output, outputFilename);
     
+    //print out time 
+    std::string progtime = "Time: " + std::to_string(delta);
+    printToFile(progtime, outputFilename+"Time");
+
     //return a success
     return 0;
 }
 
 
 void printToFile(std::string content, std::string outputFile){
+    outputFile += ".txt";
     std::ofstream outFile;
     outFile.open (outputFile);
     outFile << content;

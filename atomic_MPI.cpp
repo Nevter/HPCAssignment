@@ -12,7 +12,7 @@
 #include <math.h>       /* sqrt */
 #include <queue>
 #include <cstdlib>
-
+#include <sys/time.h>
 #include "lib/dcdplugin.c"
 
 
@@ -60,7 +60,7 @@ int main(int argc, char *argv[])  {
 
     // Get the input and output file names
     std::string inputFileName = "";
-    std::string outputFilename = "output.csv";
+    std::string outputFilename = "output";
     if (argc >= 3){
         for (int i = 0; i < argc; i++){
             if (std::string(argv[i]) == "-i"){
@@ -76,6 +76,12 @@ int main(int argc, char *argv[])  {
         std::cout << "-i <inputFileName>" << std::endl;
         std::cout << "[-o <outputFileName>]" << std::endl;
         exit(1);
+    }
+
+    struct timeval start, end;
+    if (threadNum == 0){
+        //start a timer
+        gettimeofday(&start, NULL);
     }
 
     // Read the input file parameters
@@ -212,9 +218,17 @@ int main(int argc, char *argv[])  {
             thOut = thOut.substr(0,thOut.find("!"));
             finalOutput += thOut;
         }
+
+        //end timer
+        gettimeofday(&end, NULL);
+        float delta = ((end.tv_sec  - start.tv_sec) * 1000000u + end.tv_usec - start.tv_usec) / 1.e6;
         
         //write the output to a file 
         printToFile(finalOutput, outputFilename);
+
+        //print out time 
+        std::string progtime = "Time: " + std::to_string(delta);
+        printToFile(progtime, outputFilename+"Time");
 
     }
     // SLAVE THREADS
@@ -251,6 +265,7 @@ int main(int argc, char *argv[])  {
 
 
 void printToFile(std::string content, std::string outputFile){
+    outputFile += ".txt";
     std::ofstream outFile;
     outFile.open (outputFile);
     outFile << content;

@@ -11,7 +11,7 @@
 #include <fstream>
 #include <math.h>       /* sqrt */
 #include <queue>
-
+#include <sys/time.h>
 #include <cstdlib>
 
 #include "lib/dcdplugin.c"
@@ -55,7 +55,7 @@ int main(int argc, char *argv[])  {
     
     // Get the input and output file names
     std::string inputFileName = "";
-    std::string outputFilename = "output.csv";
+    std::string outputFilename = "output";
     if (argc >= 3){
         for (int i = 0; i < argc; i++){
             if (std::string(argv[i]) == "-i"){
@@ -86,6 +86,10 @@ int main(int argc, char *argv[])  {
 
     std::vector<std::string> outputVector(omp_get_max_threads());
     int numAtoms = 0;
+
+    //start a timer
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
     
     #pragma omp parallel private(numAtoms) 
     
@@ -176,6 +180,10 @@ int main(int argc, char *argv[])  {
         close_file_read(raw_data);
 
     }
+
+    //end timer
+    gettimeofday(&end, NULL);
+    float delta = ((end.tv_sec  - start.tv_sec) * 1000000u + end.tv_usec - start.tv_usec) / 1.e6;
     
     //write the output to a file  
     std::string output = "";
@@ -185,11 +193,16 @@ int main(int argc, char *argv[])  {
 
     printToFile(output, outputFilename);
 
+    //print out time 
+    std::string progtime = "Time: " + std::to_string(delta);
+    printToFile(progtime, outputFilename+"Time");
+
     //return a success
     return 0;
 }
 
 void printToFile(std::string content, std::string outputFile){
+    outputFile += ".txt";
     std::ofstream outFile;
     outFile.open (outputFile);
     outFile << content;
