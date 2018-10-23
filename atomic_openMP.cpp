@@ -80,9 +80,8 @@ int main(int argc, char *argv[])  {
     initInputFileParameters(inputFileName);
 
     // Get the input file name
-    //TODO: Fix this.
-    //std::string fp = "/home/luke/Honours/HPC/assignment/data/"+ifParams.dcdInputFile;
-    std::string fp = "/home/luke/Honours/HPC/assignment/data/example_pn3_10RU_751frames.dcd";
+    std::string fp = ifParams.dcdInputFile;
+    fp = fp.substr(0, fp.find(".dcd")+4);
     const char* dcdFileName = fp.c_str();
 
     std::vector<std::string> outputVector(omp_get_max_threads());

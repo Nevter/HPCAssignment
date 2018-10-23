@@ -82,9 +82,8 @@ int main(int argc, char *argv[])  {
     initInputFileParameters(inputFileName); 
 
     // Get the input file name
-    //TODO: Fix this.
-    //std::string fp = "/home/luke/Honours/HPC/assignment/data/"+ifParams.dcdInputFile;
-    std::string fp = "/home/luke/Honours/HPC/assignment/data/example_pn3_10RU_751frames.dcd";
+    std::string fp = ifParams.dcdInputFile;
+    fp = fp.substr(0, fp.find(".dcd")+4);
     const char* dcdFileName = fp.c_str();
 
     //Work out how many frames each process needs to process
@@ -108,10 +107,7 @@ int main(int argc, char *argv[])  {
     if (threadNum==numThreads-1) endingFrame = numFrames;
     else endingFrame = startingFrame + numFramesPerThread;
 
-
-
     std::string threadOutput = "";
-
     //accelerate the read_next_timestep to the right frame
     for(int i=0; i<startingFrame;i++){
         // Read the next frame
@@ -174,8 +170,6 @@ int main(int argc, char *argv[])  {
     free(timestep.coords);    
     close_file_read(raw_data);
 
-    //threadOutput = threadOutput.substr(0, threadOutput.find("\n"));
-    //threadOutput += "\n";
     //MASTER THREAD
     if (threadNum == 0){
         
@@ -189,52 +183,45 @@ int main(int argc, char *argv[])  {
             MPI_Recv(&len,              //address of data to store
                      1,                         //count - number of items incoming
                      MPI_INT,                   //datatype 
-                     i,            //source (as rank)
+                     MPI_ANY_SOURCE,            //source (as rank)
                      1,                         //tag
                      MPI_COMM_WORLD,            //comm group
                      &status);        //status
 
             int receivedThread = status.MPI_SOURCE;
             char receivedString[len];
-            //if (i == 1)
-            //std::cout << "Receiving from: " << i << ", with len " << len << std::endl;
             
             MPI_Recv(receivedString,              //address of data to store
                      len,                         //count - number of items incoming
                      MPI_CHAR,                   //datatype 
-                     i,            //source (as rank)
+                     receivedThread,            //source (as rank)
                      1,                         //tag
                      MPI_COMM_WORLD,            //comm group
                      MPI_STATUS_IGNORE);        //status
             
             
             std::string output(receivedString);
-            //if (i == 1)
-            //std::cout << "Receiving from: " << i << ", content: " << output;
-
-            outputVector[i] = output;
-
+            outputVector[receivedThread] = output;
 
         }
         
-        //write the output to a file  
+        //collate the answers
         std::string finalOutput = "";
         for (int i=0; i<outputVector.size(); i++){
-            finalOutput += outputVector[i];
+            std::string thOut = outputVector[i];
+            thOut = thOut.substr(0,thOut.find("!"));
+            finalOutput += thOut;
         }
-
+        
+        //write the output to a file 
         printToFile(finalOutput, outputFilename);
-
-        //std::cout << "\n\n" << finalOutput << std::endl;
-
 
     }
     // SLAVE THREADS
     else {
         
-
+        threadOutput = threadOutput + "!";
         int len = threadOutput.length();
-        //std::cout << "Thread " << threadNum << ", sending(" << len << "): " << threadOutput;
         char outputArr[len+1];
         strcpy(outputArr, threadOutput.c_str());
 
@@ -257,8 +244,6 @@ int main(int argc, char *argv[])  {
     }
 
 
-    //std::cout << "Thread " << threadNum << ", start: " << startingFrame << ", end: " << endingFrame << std::endl;
-    //std::cout << "Thread " << threadNum << " finishing." << std::endl;
     MPI_Finalize();                             //End MPI
 
     return 0;

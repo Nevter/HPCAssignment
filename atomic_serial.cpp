@@ -78,10 +78,10 @@ int main(int argc, char *argv[])  {
     // Read the input file parameters
     initInputFileParameters(inputFileName);
 
+
     // Open the input DCD file
-    //TODO: Fix this.
-    //std::string fp = "/home/luke/Honours/HPC/assignment/data/"+ifParams.dcdInputFile;
-    std::string fp = "/home/luke/Honours/HPC/assignment/data/example_pn3_10RU_751frames.dcd";
+    std::string fp = ifParams.dcdInputFile;
+    fp = fp.substr(0, fp.find(".dcd")+4);
     const char* dcdFileName = fp.c_str();
 
     // instance of a new DCD reading object
@@ -99,9 +99,6 @@ int main(int argc, char *argv[])  {
     int numFrames = dcd->nsets;
     std::cout << "Number of frames: " << numFrames << std::endl;
     std::cout << "Number of atoms: " << numAtoms << std::endl;
-
-    //DEBUG: change number of frames so not looking at all frames
-    //numFrames = 1;
 
     std::string output = "";
 
