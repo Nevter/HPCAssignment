@@ -112,7 +112,7 @@ int main(int argc, char *argv[])  {
 
     std::string output = "";
 
-    for(int frame=0; frame<10; frame++){
+    for(int frame=0; frame<1; frame++){
         // Read the next frame
         int rc = read_next_timestep(raw_data, numAtoms, &timestep);
 
@@ -131,6 +131,7 @@ int main(int argc, char *argv[])  {
             at.x = atomA[0];
             at.y = atomA[1];
             at.z = atomA[2];
+            at.id = a;
             setA.push_back(at);
         }
         // Get each atom in set B
@@ -141,6 +142,7 @@ int main(int argc, char *argv[])  {
             at.x = atomB[0];
             at.y = atomB[1];
             at.z = atomB[2];
+            at.id = b;
             setB.push_back(at);
         }
         //sort set A to be in accending x order 
@@ -184,9 +186,30 @@ std::string findNearestSet(int k, std::vector<atom> setA,  std::vector<atom> set
     auto cmp = []( atomPair& lhs, atomPair& rhs) { return lhs.distance < rhs.distance; };   
     std::priority_queue<atomPair, std::vector<atomPair>, decltype(cmp)> smallestSet(cmp);
 
+    int count = 0;
+
     for (atom a : setA){
         for (atom b : setB){
+            
             double distance = std::sqrt(std::pow(b.x-a.x,2.0) + std::pow(b.y-a.y,2.0) + std::pow(b.z-a.z,2.0));
+
+            //if (count == 0){
+                
+                if (a.id == 313){
+                    if (b.id == 168052){
+                        std::cout << "A: " << a.id << ", B: " << b.id << ", dist: " << distance << std::endl;
+                        std::cout << "A: (" << a.x << "," << a.y << "," << a.z << ")" << std::endl;  
+                        std::cout << "B: (" << b.x << "," << b.y << "," << b.z << ")" << std::endl;
+                    }
+                }
+
+                /*
+                std::cout << "A: (" << a.x << "," << a.y << "," << a.z << ")" << std::endl;  
+                std::cout << "B: (" << b.x << "," << b.y << "," << b.z << ")" << std::endl;
+                std::cout << "Dist: " << distance << std::endl;     
+                */
+                //count++;
+            //}
 
             atomPair ap;
             ap.timeStep = frame;
@@ -195,7 +218,7 @@ std::string findNearestSet(int k, std::vector<atom> setA,  std::vector<atom> set
             ap.distance = distance;
 
             //If the distance is smaller than any in the smallest set, save it        
-            if (smallestSet.size() < ifParams.kCutOff) {
+            if (smallestSet.size() < k) {
                 smallestSet.push(ap);
             }
             else {
