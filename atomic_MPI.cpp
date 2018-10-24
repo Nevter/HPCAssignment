@@ -3,6 +3,7 @@
  */
 
 //Includes 
+#include <omp.h>  //include OMP library
 #include "mpi.h"
 #include <stdio.h>
 #include <iostream>
@@ -77,11 +78,10 @@ int main(int argc, char *argv[])  {
         std::cout << "[-o <outputFileName>]" << std::endl;
         exit(1);
     }
-
-    struct timeval start, end;
+    double start=0;
     if (threadNum == 0){
         //start a timer
-        gettimeofday(&start, NULL);
+        start = omp_get_wtime();
     }
 
     // Read the input file parameters
@@ -220,16 +220,16 @@ int main(int argc, char *argv[])  {
         }
 
         //end timer
-        gettimeofday(&end, NULL);
-        float delta = ((end.tv_sec  - start.tv_sec) * 1000000u + end.tv_usec - start.tv_usec) / 1.e6;
+        double end=omp_get_wtime();
+        std::string progtime = "Time: " + std::to_string(end-start);
         
         //write the output to a file 
         printToFile(finalOutput, outputFilename);
 
-        //print out time 
-        std::string progtime = "Time: " + std::to_string(delta);
-        printToFile(progtime, outputFilename+"Time");
-
+        //print out prog info
+        std::string info = "~MPI~ \nInput file: " + inputFileName + "\nNumber of threads: " + std::to_string(numThreads) + '\n' + progtime + '\n';
+        printToFile(info, outputFilename+"Info");
+        std::cout << info << std::endl;
     }
     // SLAVE THREADS
     else {

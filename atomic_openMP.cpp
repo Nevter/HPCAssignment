@@ -88,9 +88,8 @@ int main(int argc, char *argv[])  {
     int numAtoms = 0;
 
     //start a timer
-    struct timeval start, end;
-    gettimeofday(&start, NULL);
-    
+    double start = omp_get_wtime();
+    int globNumThreads = 0;
     #pragma omp parallel private(numAtoms) 
     
     {
@@ -109,7 +108,8 @@ int main(int argc, char *argv[])  {
         //work out which frame this process needs to process
         int numThreads = omp_get_num_threads();
         int threadNum = omp_get_thread_num();
-
+        #pragma omp master
+        globNumThreads = numThreads;
         int numFramesPerThread = numFrames/numThreads;
 
         int startingFrame = threadNum * numFramesPerThread;
@@ -182,8 +182,8 @@ int main(int argc, char *argv[])  {
     }
 
     //end timer
-    gettimeofday(&end, NULL);
-    float delta = ((end.tv_sec  - start.tv_sec) * 1000000u + end.tv_usec - start.tv_usec) / 1.e6;
+    double end=omp_get_wtime();
+    std::string progtime = "Time: " + std::to_string(end-start);
     
     //write the output to a file  
     std::string output = "";
@@ -193,9 +193,10 @@ int main(int argc, char *argv[])  {
 
     printToFile(output, outputFilename);
 
-    //print out time 
-    std::string progtime = "Time: " + std::to_string(delta);
-    printToFile(progtime, outputFilename+"Time");
+    //print out prog info 
+    std::string info = "~openMP~ \nInput file: " + inputFileName + "\nNumber of threads: " + std::to_string(globNumThreads) + '\n' + progtime + '\n';
+    printToFile(info, outputFilename+"Info");
+    std::cout << info << std::endl;
 
     //return a success
     return 0;

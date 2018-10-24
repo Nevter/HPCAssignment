@@ -3,6 +3,7 @@
  */
 
 // Includes
+#include <omp.h>  //include OMP library
 #include <stdio.h>
 #include <iostream>
 #include <vector>
@@ -79,8 +80,7 @@ int main(int argc, char *argv[])  {
     initInputFileParameters(inputFileName);
 
     //start a timer
-    struct timeval start, end;
-    gettimeofday(&start, NULL);
+    double start = omp_get_wtime();
 
     // Open the input DCD file
     std::string fp = ifParams.dcdInputFile;
@@ -157,9 +157,9 @@ int main(int argc, char *argv[])  {
     }   
 
     //end timer
-    gettimeofday(&end, NULL);
-    float delta = ((end.tv_sec  - start.tv_sec) * 1000000u + end.tv_usec - start.tv_usec) / 1.e6;
-
+    double end=omp_get_wtime();
+    std::string progtime = "Time: " + std::to_string(end-start);
+    
     //close the dcd reader
     free(timestep.coords);    
     close_file_read(raw_data);
@@ -168,8 +168,9 @@ int main(int argc, char *argv[])  {
     printToFile(output, outputFilename);
     
     //print out time 
-    std::string progtime = "Time: " + std::to_string(delta);
-    printToFile(progtime, outputFilename+"Time");
+    std::string info = "~Serial~ \nInput file: " + inputFileName + "\nNumber of threads: 1" + '\n' + progtime + '\n';
+    printToFile(info, outputFilename+"Info");
+    std::cout << info << std::endl;
 
     //return a success
     return 0;

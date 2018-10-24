@@ -5,7 +5,7 @@ all: atomic_serial atomic_MPI atomic_openMP
 
 #Serial Implementation
 atomic_serial: atomic_serial.cpp lib/dcdplugin.c
-	$(CC) -g atomic_serial.cpp -o bin/atomic_serial.o  $(flags) -O2
+	$(CC) -g -fopenmp atomic_serial.cpp -o bin/atomic_serial.o  $(flags) -O2
 
 #OpenMP Implementation
 atomic_openMP: atomic_openMP.cpp
@@ -13,7 +13,7 @@ atomic_openMP: atomic_openMP.cpp
 
 #MPI Implementation
 atomic_MPI: atomic_MPI.cpp
-	mpic++ atomic_MPI.cpp -o bin/atomic_MPI.o -lm -O2
+	mpic++ -fopenmp atomic_MPI.cpp -o bin/atomic_MPI.o -lm -O2
 
 .cpp.o:
 	$(CC) -c $< $(flags)
