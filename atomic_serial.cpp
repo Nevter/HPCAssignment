@@ -13,14 +13,8 @@
 #include <queue>
 #include <sys/time.h>
 #include <cstdlib>
-
+#include <algorithm>    // std::sort
 #include "lib/dcdplugin.c"
-
-
-// Forward declerations
-void initInputFileParameters(std::string inputFileName);
-std::vector<int> getParticleSet(std::string strParticleLine);
-void printToFile(std::string content, std::string outputFile);
 
 // Structs
 struct inputFileParameters {
@@ -45,6 +39,19 @@ struct atomPair {
         return asString;
     }
 };
+
+struct atom {
+    int x;
+    int y;
+    int z;
+    int id;
+};
+
+// Forward declerations
+void initInputFileParameters(std::string inputFileName);
+std::vector<int> getParticleSet(std::string strParticleLine);
+void printToFile(std::string content, std::string outputFile);
+std::string findNearestSet(int k, std::vector<atom> setA,  std::vector<atom> setB, int lowerBound, int upperBound, int frame);
 
 /**
  * 
@@ -105,55 +112,49 @@ int main(int argc, char *argv[])  {
 
     std::string output = "";
 
-    for(int frame=0; frame<numFrames; frame++){
+    for(int frame=0; frame<10; frame++){
         // Read the next frame
         int rc = read_next_timestep(raw_data, numAtoms, &timestep);
 
         // Holds the smallest k atomPairs    
         auto cmp = []( atomPair& lhs, atomPair& rhs) { return lhs.distance < rhs.distance; };   
         std::priority_queue<atomPair, std::vector<atomPair>, decltype(cmp)> smallestSet(cmp);
-
-        // For each atom in set A 
+        
+        //create a set of atoms
+        std::vector<atom> setA;
+        std::vector<atom> setB;
+        // Get each atom in set A 
         for (int a : ifParams.particleSetA){
-            
-            // Get each atom in set B
-            for (int b : ifParams.particleSetB){
-                
-                //get the atoms
-                float *atomA = timestep.coords + 3 * a;
-                float *atomB = timestep.coords + 3 * b;
-
-                // Get the distance between the two atoms
-                double distance = std::sqrt(std::pow(atomB[0]-atomA[0],2.0) + std::pow(atomB[1]-atomA[1],2.0) + std::pow(atomB[2]-atomA[2],2.0));   
-                
-                atomPair ap;
-                ap.timeStep = frame;
-                ap.atomAIndex = a;
-                ap.atomBIndex = b;
-                ap.distance = distance;
-
-                //If the distance is smaller than any in the smallest set, save it        
-                if (smallestSet.size() < ifParams.kCutOff) {
-                    smallestSet.push(ap);
-                }
-                else {
-                    if (smallestSet.top().distance > distance){
-                        smallestSet.pop();
-                        smallestSet.push(ap);
-                    }
-                }  
-            }
+            //get the atom
+            float *atomA = timestep.coords + 3 * a;
+            atom at;
+            at.x = atomA[0];
+            at.y = atomA[1];
+            at.z = atomA[2];
+            setA.push_back(at);
         }
+        // Get each atom in set B
+        for (int b : ifParams.particleSetB){
+            //get the atoms
+            float *atomB = timestep.coords + 3 * b;
+            atom at;
+            at.x = atomB[0];
+            at.y = atomB[1];
+            at.z = atomB[2];
+            setB.push_back(at);
+        }
+        //sort set A to be in accending x order 
+        auto comp = [](atom a1, atom a2){ return a1.x < a2.x; };
+        std::sort(setA.begin(), setA.end(), comp);
+        //sort set B to in accending x order 
+        std::sort(setB.begin(), setB.end(), comp);
         
-        std::string frameOutput = "";
-        // Put the smallest k atom pairs in an output String
-        while (!smallestSet.empty()){
-            atomPair ap = smallestSet.top();
-            frameOutput = ap.toString() + "\n" + frameOutput;
-            smallestSet.pop();
-        }
+        int lowerBound = std::min(setA.front().x, setB.front().x);
+        int upperBound = std::min(setA.back().x, setB.back().x);
+
+        std::string frameOutput = findNearestSet(ifParams.kCutOff, setA, setB, lowerBound, upperBound, frame);
         output += frameOutput;
-        
+ 
     }   
 
     //end timer
@@ -176,6 +177,47 @@ int main(int argc, char *argv[])  {
     return 0;
 }
 
+
+
+std::string findNearestSet(int k, std::vector<atom> setA,  std::vector<atom> setB, int lowerBound, int upperBound, int frame){
+    // Holds the smallest k atomPairs    
+    auto cmp = []( atomPair& lhs, atomPair& rhs) { return lhs.distance < rhs.distance; };   
+    std::priority_queue<atomPair, std::vector<atomPair>, decltype(cmp)> smallestSet(cmp);
+
+    for (atom a : setA){
+        for (atom b : setB){
+            double distance = std::sqrt(std::pow(b.x-a.x,2.0) + std::pow(b.y-a.y,2.0) + std::pow(b.z-a.z,2.0));
+
+            atomPair ap;
+            ap.timeStep = frame;
+            ap.atomAIndex = a.id;
+            ap.atomBIndex = b.id;
+            ap.distance = distance;
+
+            //If the distance is smaller than any in the smallest set, save it        
+            if (smallestSet.size() < ifParams.kCutOff) {
+                smallestSet.push(ap);
+            }
+            else {
+                if (smallestSet.top().distance > distance){
+                    smallestSet.pop();
+                    smallestSet.push(ap);
+                }
+            } 
+        }
+    }
+
+    std::string frameOutput = "";
+    // Put the smallest k atom pairs in an output String
+    while (!smallestSet.empty()){
+        atomPair ap = smallestSet.top();
+        frameOutput = ap.toString() + "\n" + frameOutput;
+        smallestSet.pop();
+    }
+
+    return frameOutput;
+
+}
 
 void printToFile(std::string content, std::string outputFile){
     outputFile += ".txt";
