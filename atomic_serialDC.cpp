@@ -51,8 +51,8 @@ struct atom {
 void initInputFileParameters(std::string inputFileName);
 std::vector<int> getParticleSet(std::string strParticleLine);
 void printToFile(std::string content, std::string outputFile);
-std::vector<atomPair> findNearestSet(int k, std::vector<atom> setA,  std::vector<atom> setB, float lowerBound, float upperBound, int frame);
-std::vector<atomPair> getSmallestSet(int k, std::vector<atom> setA,  std::vector<atom> setB, float lowerBound, float upperBound, int frame, int numSegments);
+std::vector<atomPair> findNearestSet(int k, std::vector<atom> &setA,  std::vector<atom> &setB, float lowerBound, float upperBound, int frame);
+std::vector<atomPair> getSmallestSet(int k, std::vector<atom> &setA,  std::vector<atom> &setB, float lowerBound, float upperBound, int frame, int numSegments);
 
 /**
  * 
@@ -155,9 +155,8 @@ int main(int argc, char *argv[])  {
         float lowerBound = std::min(setA.front().x, setB.front().x);
         float upperBound = std::min(setA.back().x, setB.back().x);
         
-
-        std::vector<atomPair> frameSet = getSmallestSet(ifParams.kCutOff, setA, setB, lowerBound, upperBound, frame, 4);
-
+        std::vector<atomPair> frameSet = getSmallestSet(ifParams.kCutOff, setA, setB, lowerBound, upperBound, frame, 2);
+        
         std::string frameOutput = "";
         for (int i=0; i < ifParams.kCutOff; i++){
             frameOutput += frameSet[i].toString() + "\n";
@@ -187,36 +186,37 @@ int main(int argc, char *argv[])  {
     return 0;
 }
 
-std::vector<atomPair> getSmallestSet(int k, std::vector<atom> setA,  std::vector<atom> setB, float lowerBound, float upperBound, int frame, int numSegments){
+std::vector<atomPair> getSmallestSet(int k, std::vector<atom> &setA,  std::vector<atom> &setB, float lowerBound, float upperBound, int frame, int numSegments){
 
-    if (numSegments == 0){
+    if (numSegments <= 0){
         return findNearestSet(k, setA, setB, lowerBound, upperBound, frame);
     }
     
+    else {
+        float midPoint =  lowerBound + ((upperBound - lowerBound)/2);
 
-    float midPoint =  upperBound - lowerBound;
+        std::vector<atomPair> lowerHalf = getSmallestSet(ifParams.kCutOff, setA, setB, lowerBound, midPoint, frame, numSegments-1);
+        std::vector<atomPair> upperHalf = getSmallestSet(ifParams.kCutOff, setA, setB, midPoint, upperBound, frame, numSegments-1);
+        std::vector<atomPair> middleSection = findNearestSet(ifParams.kCutOff, setA, setB, midPoint-1, midPoint+1, frame);
 
-    std::vector<atomPair> lowerHalf = getSmallestSet(ifParams.kCutOff, setA, setB, lowerBound, midPoint, frame, numSegments-1);
-    std::vector<atomPair> upperHalf = getSmallestSet(ifParams.kCutOff, setA, setB, midPoint, upperBound, frame, numSegments-1);
-    std::vector<atomPair> middleSection = findNearestSet(ifParams.kCutOff, setA, setB, midPoint-1, midPoint+1, frame);
+        std::vector<atomPair> combined;
+        combined.reserve(lowerHalf.size() + upperHalf.size() + middleSection.size() );
+        combined.insert(combined.end(), lowerHalf.begin(), lowerHalf.end());
+        combined.insert(combined.end(), upperHalf.begin(), upperHalf.end());
+        combined.insert(combined.end(), middleSection.begin(), middleSection.end());
 
-    std::vector<atomPair> combined;
-    combined.reserve(lowerHalf.size() + upperHalf.size() + middleSection.size() );
-    combined.insert(combined.end(), lowerHalf.begin(), lowerHalf.end());
-    combined.insert(combined.end(), upperHalf.begin(), upperHalf.end());
-    combined.insert(combined.end(), middleSection.begin(), middleSection.end());
+        //sort by smallest 
+        auto compAtomPair = [](atomPair a1, atomPair a2){ return a1.distance < a2.distance; };
+        std::sort(combined.begin(), combined.end(), compAtomPair);
+        combined.resize(k);
 
-    //sort by smallest 
-    auto compAtomPair = [](atomPair a1, atomPair a2){ return a1.distance < a2.distance; };
-    std::sort(combined.begin(), combined.end(), compAtomPair);
-    combined.resize(k);
-    
-    return combined;
+        return combined;
+    }
 
 }
 
 
-std::vector<atomPair> findNearestSet(int k, std::vector<atom> setA,  std::vector<atom> setB, float lowerBound, float upperBound, int frame){
+std::vector<atomPair> findNearestSet(int k, std::vector<atom> &setA,  std::vector<atom> &setB, float lowerBound, float upperBound, int frame){
     // Holds the smallest k atomPairs    
     auto cmp = []( atomPair& lhs, atomPair& rhs) { return lhs.distance < rhs.distance; };   
     std::priority_queue<atomPair, std::vector<atomPair>, decltype(cmp)> smallestSet(cmp);
