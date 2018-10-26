@@ -1,11 +1,15 @@
 CC=g++
 flags=-std=c++11
 
-all: atomic_serial atomic_MPI atomic_openMP
+all: atomic_serialBF atomic_serialDC atomic_MPI atomic_openMP
 
-#Serial Implementation
-atomic_serial: atomic_serial.cpp lib/dcdplugin.c
-	$(CC) -g -fopenmp atomic_serial.cpp -o bin/atomic_serial.o  $(flags) -O2
+#Serial BF Implementation
+atomic_serialDC: atomic_serialDC.cpp lib/dcdplugin.c
+	$(CC) -g -fopenmp atomic_serialDC.cpp -o bin/atomic_serialDC.o  $(flags) -O2
+
+#Serial BF Implementation
+atomic_serialBF: atomic_serialBF.cpp lib/dcdplugin.c
+	$(CC) -g -fopenmp atomic_serialBF.cpp -o bin/atomic_serialBF.o  $(flags) -O2
 
 #OpenMP Implementation
 atomic_openMP: atomic_openMP.cpp
